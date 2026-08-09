@@ -1,0 +1,53 @@
+services:
+  aruco-landing:
+    build:
+      context: .
+      args:
+        ARUCO_REPOSITORY: ${ARUCO_REPOSITORY:-https://github.com/Aki0290/aruco_landing_docker.git}
+        ARUCO_REF: ${ARUCO_REF:-main}
+    image: aruco-landing-pi4:humble
+    container_name: aruco-landing-pi4
+    privileged: true
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 20s
+    volumes:
+      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - ./runtime:/runtime
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      FCU_URL: ${FCU_URL:-auto}
+      FCU_BAUD: ${FCU_BAUD:-115200}
+      GCS_URL: ${GCS_URL:-}
+      COLOR_PROFILE: ${COLOR_PROFILE:-640x480x15}
+      DEPTH_PROFILE: ${DEPTH_PROFILE:-640x360x15}
+      ENABLE_DEPTH: ${ENABLE_DEPTH:-true}
+      ENABLE_IMU: ${ENABLE_IMU:-false}
+      ENABLE_POINTCLOUD: ${ENABLE_POINTCLOUD:-false}
+      ALIGN_DEPTH: ${ALIGN_DEPTH:-false}
+      SEARCH_HEIGHT: ${SEARCH_HEIGHT:-2.0}
+      OPERATION_MODE: ${OPERATION_MODE:-practice}
+      START_LANDING_NODE: ${START_LANDING_NODE:-true}
+      AUTONOMOUS_FLIGHT_ACK: ${AUTONOMOUS_FLIGHT_ACK:-NOT_ACKNOWLEDGED}
+      DEVICE_WAIT_TIMEOUT: ${DEVICE_WAIT_TIMEOUT:-120}
+      READY_TIMEOUT: ${READY_TIMEOUT:-180}
+      READY_STABLE_COUNT: ${READY_STABLE_COUNT:-3}
+      START_TRIGGER: ${START_TRIGGER:-rc}
+      RC_START_CHANNEL: ${RC_START_CHANNEL:-7}
+      RC_LOW_THRESHOLD: ${RC_LOW_THRESHOLD:-1200}
+      RC_HIGH_THRESHOLD: ${RC_HIGH_THRESHOLD:-1800}
+      RC_HIGH_HOLD_SECONDS: ${RC_HIGH_HOLD_SECONDS:-1.0}
+      REQUIRE_RC_LOW_FIRST: ${REQUIRE_RC_LOW_FIRST:-true}
+      RGB_LED_RED_GPIO: ${RGB_LED_RED_GPIO:-17}
+      RGB_LED_GREEN_GPIO: ${RGB_LED_GREEN_GPIO:-27}
+      RGB_LED_BLUE_GPIO: ${RGB_LED_BLUE_GPIO:-22}
+      AUTO_START_DELAY: ${AUTO_START_DELAY:-5}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/aruco-healthcheck"]
+      interval: 15s
+      timeout: 8s
+      retries: 10
+      start_period: 90s
