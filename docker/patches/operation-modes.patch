@@ -1,0 +1,57 @@
+diff --git a/aruco_landing/landing_node.py b/aruco_landing/landing_node.py
+index 5a42ac6..1111111 100644
+--- a/aruco_landing/landing_node.py
++++ b/aruco_landing/landing_node.py
+@@ -29,6 +29,12 @@ class ArucoLandingNode(Node):
+     def __init__(self):
+         super().__init__("aruco_landing_node")
+ 
++        self.declare_parameter("operation_mode", "practice")
++        self.operation_mode = str(self.get_parameter("operation_mode").value)
++        if self.operation_mode not in ("practice", "bench", "flight"):
++            raise ValueError(f"Unsupported operation_mode: {self.operation_mode}")
++        self.get_logger().warn(f"OPERATION MODE: {self.operation_mode.upper()}")
++
+         self.landing_marker_id = 102
+         self.marker_length = 0.15
+         self.declare_parameter("search_height", 2.0)
+@@ -108,9 +114,6 @@ class ArucoLandingNode(Node):
+         self.current_pose = msg
+ 
+     def image_callback(self, msg):
+-        if self.current_pose is None or self.takeoff_position is None:
+-            return
+-
+         try:
+             frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+         except cv_bridge.CvBridgeError as e:
+@@ -118,5 +121,19 @@ class ArucoLandingNode(Node):
+             return
+ 
++        # Practice and bench modes never publish setpoints or call flight
++        # services. They only exercise the real camera and marker detector.
++        if self.operation_mode in ("practice", "bench"):
++            tvec, detected_id = self.detect_aruco(frame)
++            if detected_id == self.landing_marker_id:
++                self.get_logger().info(
++                    f"SAFE {self.operation_mode}: marker offset "
++                    f"x={tvec[0]:+.3f}, y={tvec[1]:+.3f}, z={tvec[2]:+.3f}"
++                )
++            return
++
++        if self.current_pose is None or self.takeoff_position is None:
++            return
++
+         if self.mission_state in [MissionState.SEARCHING, MissionState.CENTERING]:
+             tvec, detected_id = self.detect_aruco(frame)
+             if detected_id == self.landing_marker_id:
+@@ -151,6 +167,9 @@ class ArucoLandingNode(Node):
+         )
+ 
+     def control_loop(self):
++        if self.operation_mode != "flight":
++            return
++
+         now = time.monotonic()
+ 
+         if not self.current_state:
