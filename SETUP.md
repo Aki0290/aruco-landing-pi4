@@ -56,7 +56,29 @@ docker version
 docker compose version
 ```
 
-## 4. このフォルダをPiへコピーする
+## 4. GitHubからPiへダウンロードする
+
+推奨方法はGitHubから直接クローンすることです。
+
+```bash
+cd ~
+git clone https://github.com/Aki0290/aruco-landing-pi4.git
+cd aruco-landing-pi4
+chmod +x ./*.sh docker/*.sh docker/*.py
+```
+
+GitHubには実行中の個体設定`.env`を登録していません。`.env`には現在の
+`practice`、`bench`、`flight`モード、FC接続先、D455設定、CH7閾値、LEDの
+GPIO番号などが入ります。誰かが`flight`へ切り替えた状態を誤って配布しないため、
+安全な見本`.env.example`だけをGitHubで管理しています。
+
+最初に次を実行して、安全なPractice設定の`.env`を生成します。
+
+```bash
+cp .env.example .env
+```
+
+### GitHubを使わずコピーする場合
 
 Macからコピーする例です。ユーザー名とIPアドレスは実際のPiに合わせます。
 
