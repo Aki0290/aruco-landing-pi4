@@ -1,6 +1,6 @@
 # ArUco Landing Pi 4B Training & Competition Package
 
-Raspberry Pi 4B、Ubuntu 22.04 ARM64、RealSense D455、USB接続のArduPilot FC、
+Raspberry Pi 4B、Ubuntu 22.04 ARM64、RealSense D455、GPIO UART接続のArduPilot FC、
 ROS 2 Humble向けの配布用パッケージです。初期状態は飛行指令を一切送らない
 `practice`です。
 
@@ -109,16 +109,20 @@ PreArmチェック、安全スイッチ、RCフェイルセーフは無効化し
 
 LED未接続でもソフトウェア動作には影響しません。共通アノード型は非対応です。
 
-## USB接続と電源
+## FCのUART接続、D455、電源
 
 - D455はPi 4Bの青いUSB 3ポートへ接続
-- FCは別のUSBポートへ接続
+- Pi GPIO14/TX（物理8番）をFC TELEM RXへ接続
+- Pi GPIO15/RX（物理10番）をFC TELEM TXへ接続
+- Pi GND（物理6番など）をFC TELEM GNDへ接続
 - FCはPower Moduleから給電
 - PiとD455は十分な容量の5V BECから給電
-- 短いUSBケーブルを使用して両端を機体へ固定
+- FC TELEMの5V端子はPiへ接続しない
+- D455のUSBケーブルとUART配線を機体へ固定
 
-FCは`/dev/serial/by-id`から自動検出します。複数FCがある場合は
-`config/common.env`の`FCU_URL`へ固定パスを指定します。
+FCは`/dev/serial0`を115200 baudで使用します。PiでUARTを有効化し、FC側の
+接続したTELEMポートをMAVLink 2、115200 baudに設定してください。詳細は
+[`SETUP.md`](SETUP.md)を参照してください。信号は3.3V UARTです。
 
 ## ログと確認
 
@@ -137,4 +141,4 @@ tail -f runtime/logs/aruco_landing.log
 - 後輩だけで`flight`を実行しない
 - Benchまでは必ずプロペラを外す
 - 飛行試験は大会規則、責任者、緊急停止手段、飛行区域を確認する
-- 高耐久SDカードまたはSSDを使用し、電源・冷却・USB固定を確認する
+- 高耐久SDカードまたはSSDを使用し、電源・冷却・配線固定を確認する

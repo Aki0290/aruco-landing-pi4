@@ -6,7 +6,7 @@ failed=0
 check() { if eval "$2" >/dev/null 2>&1; then echo "OK  $1"; else echo "NG  $1"; failed=1; fi; }
 check "Docker" "docker info"
 check "D455 USB" "lsusb | grep -qiE 'Intel.*RealSense|RealSense'"
-check "ArduPilot USB" "find /dev/serial/by-id -maxdepth 1 -type l 2>/dev/null | grep -qiE 'ArduPilot|Pixhawk|Cube|PX4'"
+check "FC UART /dev/serial0" "test -e /dev/serial0"
 check "Compose config" "docker compose config --quiet"
 check "Container" "docker compose ps --status running | grep -q aruco-landing"
 if docker compose ps --status running | grep -q aruco-landing; then

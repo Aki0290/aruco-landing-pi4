@@ -19,7 +19,7 @@ services:
     environment:
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
       RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-      FCU_URL: ${FCU_URL:-auto}
+      FCU_URL: ${FCU_URL:-serial:///dev/serial0:115200}
       FCU_BAUD: ${FCU_BAUD:-115200}
       GCS_URL: ${GCS_URL:-}
       COLOR_PROFILE: ${COLOR_PROFILE:-640x480x15}

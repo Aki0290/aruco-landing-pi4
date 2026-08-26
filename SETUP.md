@@ -1,6 +1,6 @@
 # ArUco Landing 環境セットアップ手順
 
-このフォルダは、Raspberry Pi 4B、RealSense D455、USB接続のArduPilot FCを使って、
+このフォルダは、Raspberry Pi 4B、RealSense D455、GPIO UART接続のArduPilot FCを使って、
 ArUco検出練習、FC接続練習、本番用自動航行を行うための配布パッケージです。
 
 初期状態は必ず`practice`です。`practice`ではMAVROSを起動せず、FCへ飛行指令を
@@ -12,7 +12,7 @@ ArUco検出練習、FC接続練習、本番用自動航行を行うための配�
 - 64-bit版Ubuntu Server 22.04
 - 32GB以上の高耐久microSDカード、またはUSB SSD
 - RealSense D455と短いUSB 3ケーブル
-- ArduPilot対応FCとUSBケーブル
+- ArduPilot対応FCとTELEM用ケーブル
 - RC送信機・受信機
 - 共通カソードRGB LED
 - 220～330Ω抵抗を3本
@@ -94,22 +94,59 @@ cd ~/aruco-landing-pi4
 chmod +x ./*.sh docker/*.sh docker/*.py
 ```
 
-## 5. 機器を接続する
+## 5. PiのUARTを有効化する
+
+Ubuntuの`/boot/firmware/config.txt`の末尾へ次を追加します。
+
+```ini
+enable_uart=1
+```
+
+`/boot/firmware/cmdline.txt`に`console=serial0,115200`または
+`console=ttyAMA0,115200`がある場合は、その項目だけを削除します。このファイルは
+内容を1行のまま維持してください。その後、シリアルコンソールを停止して再起動します。
+
+```bash
+sudo systemctl disable --now serial-getty@ttyAMA0.service 2>/dev/null || true
+sudo reboot
+```
+
+再接続後、UARTを確認します。
+
+```bash
+ls -l /dev/serial0
+```
+
+## 6. 機器を接続する
 
 - D455はPi 4Bの青いUSB 3ポートへ接続します。
-- ArduPilot FCはPiの別のUSBポートへ接続します。
+- Pi GPIO14/TX（物理8番）をFCのTELEM RXへ接続します。
+- Pi GPIO15/RX（物理10番）をFCのTELEM TXへ接続します。
+- Pi GND（物理6番など）をFCのTELEM GNDへ接続します。
 - FCはPower Moduleから給電します。
 - PiとD455は十分な容量の5V BECから給電します。
-- USBケーブルは振動で抜けないよう、両端を機体へ固定します。
+- FCのTELEM 5V端子はPiへ接続しません。
+- UART配線とD455のUSBケーブルを振動で抜けないよう固定します。
+
+PiのGPIOは3.3V UART専用です。5V信号を入力しないでください。TXとRXは交差して
+接続し、GNDは必ず共通にします。
+
+Mission Plannerで、接続したTELEMポートを設定します。TELEM1なら`SERIAL1_*`、
+TELEM2なら通常`SERIAL2_*`です（FCによって異なるため基板資料も確認してください）。
+
+```text
+SERIALx_PROTOCOL = 2   # MAVLink 2
+SERIALx_BAUD     = 115 # 115200 baud
+```
 
 認識を確認します。
 
 ```bash
 lsusb
-ls -l /dev/serial/by-id/
+ls -l /dev/serial0
 ```
 
-## 6. RGB LEDを接続する
+## 7. RGB LEDを接続する
 
 共通カソードRGB LEDの各色へ220～330Ωの抵抗を直列に入れます。
 
@@ -123,7 +160,7 @@ ls -l /dev/serial/by-id/
 LEDを接続していなくてもソフトウェアは動作します。共通アノード型には対応して
 いません。
 
-## 7. Dockerイメージを作る
+## 8. Dockerイメージを作る
 
 ```bash
 cd ~/aruco-landing-pi4
@@ -133,7 +170,7 @@ docker compose build
 初回はARM64向けlibrealsenseをコンパイルするため時間がかかります。途中で電源を
 切らないでください。失敗した場合は、まず同じコマンドを再実行します。
 
-## 8. Practiceモードで確認する
+## 9. Practiceモードで確認する
 
 ```bash
 ./run-practice.sh
@@ -149,7 +186,7 @@ ArUco ID 102をD455へ見せ、ログに検出結果が表示されることを�
 tail -f runtime/logs/aruco_landing.log
 ```
 
-## 9. BenchモードでFCとCH7を確認する
+## 10. BenchモードでFCとCH7を確認する
 
 必ずプロペラを外してください。
 
@@ -163,7 +200,7 @@ Takeoff、setpoint送信を行いません。
 LEDが青になったらCH7を一度OFFにし、その後ONで1秒保持します。LEDが緑になれば、
 送信機からFC、MAVROS、Piまでの開始信号は正常です。機体は飛行しません。
 
-## 10. CH7をMission Plannerで設定する
+## 11. CH7をMission Plannerで設定する
 
 1. 送信機の空いている2ポジションスイッチを受信機CH7へ割り当てます。
 2. Mission PlannerでFCへ接続します。
@@ -175,7 +212,7 @@ LEDが青になったらCH7を一度OFFにし、その後ONで1秒保持しま�
 起動時にCH7がONでも開始しません。一度OFFを認識した後、ONを1秒保持する必要が
 あります。
 
-## 11. 電源投入時の自動起動を設定する
+## 12. 電源投入時の自動起動を設定する
 
 最初はPracticeモードのまま設定します。
 
@@ -197,7 +234,7 @@ sudo systemctl status aruco-landing
 docker compose ps
 ```
 
-## 12. Flightモードへ切り替える
+## 13. Flightモードへ切り替える
 
 Flightは責任者立会いの飛行試験または大会本番でのみ使います。
 
@@ -224,7 +261,7 @@ Flightでは次の順番で動作します。
 ./run-practice.sh
 ```
 
-## 13. LED表示
+## 14. LED表示
 
 | 色   | 状態                          |
 | ---- | ----------------------------- |
@@ -235,7 +272,7 @@ Flightでは次の順番で動作します。
 | 黄   | 自動航行開始前カウントダウン  |
 | 紫   | 自動航行中                    |
 
-## 14. トラブル確認
+## 15. トラブル確認
 
 ```bash
 docker compose ps
@@ -264,5 +301,5 @@ docker compose exec aruco-landing ros2 topic echo /mavros/rc/in --once
 - Benchまでは必ずプロペラを外します。
 - ArduPilotのPreArmチェック、安全スイッチ、RCフェイルセーフを無効化しません。
 - Flightは大会規則、責任者、飛行区域、緊急停止手段を確認して実施します。
-- モーター動作時の低電圧、USB切断、Piの過熱を事前に確認します。
+- モーター動作時の低電圧、UART通信断、D455のUSB切断、Piの過熱を事前に確認します。
 - 本パッケージは安全な段階練習を補助しますが、飛行安全を保証するものではありません。

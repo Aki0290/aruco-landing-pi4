@@ -39,7 +39,19 @@ wait_usb() {
 }
 
 detect_fcu() {
-  [[ "${FCU_URL:-auto}" != auto ]] && { echo "$FCU_URL"; return; }
+  if [[ "${FCU_URL:-auto}" != auto ]]; then
+    local configured_url="$FCU_URL" configured_device=""
+    if [[ "$configured_url" =~ ^serial://(/dev/[^:]+)(:.*)?$ ]]; then
+      configured_device="${BASH_REMATCH[1]}"
+      local deadline=$((SECONDS + DEVICE_WAIT_TIMEOUT))
+      until [[ -e "$configured_device" ]]; do
+        (( SECONDS >= deadline )) && return 1
+        sleep 2
+      done
+    fi
+    echo "$configured_url"
+    return
+  fi
   local deadline=$((SECONDS + DEVICE_WAIT_TIMEOUT)) devices=()
   while (( SECONDS < deadline )); do
     shopt -s nullglob
