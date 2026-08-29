@@ -11,7 +11,7 @@ ArUco検出練習、FC接続練習、本番用自動航行を行うための配�
 - Raspberry Pi 4B（4GB以上、8GB推奨）
 - 64-bit版Ubuntu Server 22.04
 - 32GB以上の高耐久microSDカード、またはUSB SSD
-- RealSense D455と短いUSB 3ケーブル
+- Logicool C270（標準）、またはRealSense D455
 - ArduPilot対応FCとTELEM用ケーブル
 - RC送信機・受信機
 - 共通カソードRGB LED
@@ -173,18 +173,56 @@ docker compose build
 ## 9. Practiceモードで確認する
 
 ```bash
-./run-practice.sh
+./run-usb-practice.sh
 docker compose logs -f
 ```
 
-PracticeではD455とArUco検出だけを起動します。FCへ指令は送りません。LEDは
+PracticeではC270とArUco検出だけを起動します。FCへ指令は送りません。LEDは
 水色になります。
 
-ArUco ID 102をD455へ見せ、ログに検出結果が表示されることを確認します。
+ArUco ID 102をC270へ見せ、ログに検出結果が表示されることを確認します。
 
 ```bash
 tail -f runtime/logs/aruco_landing.log
 ```
+
+## Dockerを使わないPractice
+
+この方法はD455とArUco検出だけをホスト上で動かします。MAVROS、FC接続、Arm、
+Takeoff、setpoint送信は起動しません。Ubuntu 22.04 ARM64を前提とします。
+
+初回はネイティブ環境を構築します。
+
+```bash
+cd ~/aruco-landing-pi4
+./install-native-practice.sh
+```
+
+ROS 2 Humbleを導入し、Pi向けRSUSBバックエンドでlibrealsenseをビルドした後、
+`~/aruco_ws`へRealSense ROSとArUcoノードを構築します。完了後はudevルールを
+反映するためD455を一度抜き差ししてください。
+
+診断してからPracticeを起動します。
+
+```bash
+./diagnose-native-practice.sh
+./run-native-practice.sh
+```
+
+Docker版が実行中の場合はD455と競合するため、先に`docker compose down`を実行
+します。初期設定はRGB `640x480x15`、depth/IMU/pointcloud無効です。終了は
+`Ctrl+C`です。画像レートは別ターミナルで確認できます。
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/aruco_ws/install/setup.bash
+ros2 topic hz /camera/camera/color/image_raw
+```
+
+ログは`native-runtime/logs/realsense.log`と
+`native-runtime/logs/aruco_landing.log`へ保存されます。USB認識が失敗する場合は、
+D455を青いUSB 3ポートへ接続し、USB 3対応ケーブルとPiの電源容量を確認します。
+`lsusb -t`では通常`5000M`と表示されます。
 
 ## 10. BenchモードでFCとCH7を確認する
 
@@ -265,12 +303,13 @@ Flightでは次の順番で動作します。
 
 | 色   | 状態                          |
 | ---- | ----------------------------- |
-| 赤   | 起動中、機器待ち              |
-| 水色 | Practiceモード                |
-| 青   | Bench/Flight準備完了、CH7待ち |
+| 赤（速い点滅） | 起動中、異常、ジオフェンス超過、手動介入 |
+| 水色（遅い点滅） | Practiceモード |
+| 青（遅い点滅） | Bench/Flight準備完了、CH7待ち |
 | 緑   | CH7受付成功                   |
-| 黄   | 自動航行開始前カウントダウン  |
-| 紫   | 自動航行中                    |
+| 黄（速い点滅） | 自動航行開始前カウントダウン |
+| 緑（遅い点滅） | 自動航行中 |
+| 黄（遅い点滅） | 自動着陸中 |
 
 ## 15. トラブル確認
 

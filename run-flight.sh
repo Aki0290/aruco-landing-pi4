@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-exec "$(cd "$(dirname "$0")" && pwd)/select-mode.sh" flight
+set -euo pipefail
+root="$(cd "$(dirname "$0")" && pwd)"
+"$root/preflight-check.sh"
+exec "$root/select-mode.sh" flight

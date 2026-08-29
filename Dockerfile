@@ -1,7 +1,7 @@
 FROM ros:humble-ros-base-jammy
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG LIBREALSENSE_VERSION=v2.55.1
+ARG LIBREALSENSE_VERSION=v2.58.3
 ARG REALSENSE_ROS_VERSION=4.55.1
 ARG ARUCO_REPOSITORY=https://github.com/Aki0290/aruco_landing_docker.git
 ARG ARUCO_REF=main
@@ -55,18 +55,40 @@ RUN rosdep update \
     && rm -rf /var/lib/apt/lists/* \
     && source /opt/ros/humble/setup.bash \
     && cd "${WS}" \
-    && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    && colcon build --merge-install --cmake-args \
+      -DCMAKE_BUILD_TYPE=Release \
+      -Drealsense2_DIR=/usr/local/lib/cmake/realsense2 \
       --packages-select realsense2_camera_msgs realsense2_description \
         realsense2_camera aruco_landing \
       --parallel-workers 2 \
     && rm -rf "${WS}/build" "${WS}/log"
 
+# Pythonのみの検出モードはビルド後に適用し、重いROS再ビルドを避ける。
+COPY docker/patches/detection-only.patch /tmp/detection-only.patch
+RUN git -C "${WS}/src/aruco_landing" apply /tmp/detection-only.patch \
+    && patch -p1 -d "${WS}/install/lib/python3.10/site-packages" \
+      < /tmp/detection-only.patch
+
+# 後段に置き、USBカメラ機能の変更で重いlibrealsenseビルドを無効化しない。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3-rpi-ws281x ros-humble-v4l2-camera ros-humble-camera-calibration \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/overlays/landing_node.py \
+  ${WS}/src/aruco_landing/aruco_landing/landing_node.py
+COPY docker/overlays/landing_node.py \
+  ${WS}/install/lib/python3.10/site-packages/aruco_landing/landing_node.py
+
 COPY docker/entrypoint.sh /usr/local/bin/aruco-entrypoint
 COPY docker/start-hardware.sh /usr/local/bin/start-hardware
 COPY docker/wait-for-rc-start.py /usr/local/bin/wait-for-rc-start
+COPY docker/arm-disarm-test.py /usr/local/bin/arm-disarm-test
+COPY docker/status-led-ws281x.py /usr/local/bin/status-led-ws281x
 COPY docker/healthcheck.sh /usr/local/bin/aruco-healthcheck
 RUN chmod +x /usr/local/bin/aruco-entrypoint /usr/local/bin/start-hardware \
-      /usr/local/bin/wait-for-rc-start /usr/local/bin/aruco-healthcheck \
+      /usr/local/bin/wait-for-rc-start /usr/local/bin/arm-disarm-test \
+      /usr/local/bin/status-led-ws281x \
+      /usr/local/bin/aruco-healthcheck \
     && mkdir -p /runtime
 
 WORKDIR /runtime

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210">
+  <rect width="297" height="210" fill="white"/>
+  <defs>
+    <pattern id="checker" width="50" height="50" patternUnits="userSpaceOnUse">
+      <rect width="25" height="25" fill="black"/>
+      <rect x="25" y="25" width="25" height="25" fill="black"/>
+    </pattern>
+  </defs>
+  <!-- 9x7 squares = 8x6 internal corners; each square is exactly 25 mm. -->
+  <rect x="36" y="17.5" width="225" height="175" fill="url(#checker)"/>
+</svg>

@@ -1,0 +1,40 @@
+diff --git a/aruco_landing/landing_node.py b/aruco_landing/landing_node.py
+--- a/aruco_landing/landing_node.py
++++ b/aruco_landing/landing_node.py
+@@ -34,6 +34,8 @@ class ArucoLandingNode(Node):
+ 
+         self.landing_marker_id = 102
+         self.marker_length = 0.15
++        self.declare_parameter("detection_only", False)
++        self.detection_only = bool(self.get_parameter("detection_only").value)
+         self.declare_parameter("search_height", 2.0)
+         self.search_height = float(self.get_parameter("search_height").value)
+         self.centering_tolerance = 0.1
+@@ -135,8 +137,14 @@ class ArucoLandingNode(Node):
+         if self.operation_mode in ("practice", "bench"):
+             tvec, detected_id = self.detect_aruco(frame)
+             if detected_id == self.landing_marker_id:
+-                self.get_logger().info(
+-                    f"SAFE {self.operation_mode}: marker offset "
+-                    f"x={tvec[0]:+.3f}, y={tvec[1]:+.3f}, z={tvec[2]:+.3f}"
+-                )
++                if tvec is None:
++                    self.get_logger().info(
++                        f"SAFE {self.operation_mode}: marker ID {detected_id} detected "
++                        "(uncalibrated; distance unavailable)"
++                    )
++                else:
++                    self.get_logger().info(
++                        f"SAFE {self.operation_mode}: marker offset "
++                        f"x={tvec[0]:+.3f}, y={tvec[1]:+.3f}, z={tvec[2]:+.3f}"
++                    )
+             return
+@@ -304,6 +310,8 @@ class ArucoLandingNode(Node):
+             )
+             for i, marker_id in enumerate(ids):
+                 if marker_id[0] == self.landing_marker_id:
++                    if self.detection_only:
++                        return None, ids[i][0]
+                     self.get_logger().info(
+                         f">>> Target marker {self.landing_marker_id} FOUND! <<<"
+                     )

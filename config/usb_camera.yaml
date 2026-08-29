@@ -1,0 +1,26 @@
+image_width: 640
+image_height: 480
+camera_name: c270_hd_webcam
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [717.76816,   0.     , 335.7715 ,
+           0.     , 718.70203, 239.96791,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.101429, -0.041866, -0.001323, -0.001311, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [736.19507,   0.     , 334.21755,   0.     ,
+           0.     , 737.81635, 238.98587,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]

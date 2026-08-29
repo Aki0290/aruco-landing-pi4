@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import os
+import struct
 import sys
 import time
 
 import rclpy
-from mavros_msgs.msg import RCIn
+from mavros_msgs.msg import Mavlink, RCIn
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 
@@ -29,6 +30,13 @@ class RCStartGate(Node):
             depth=10,
         )
         self.create_subscription(RCIn, "/mavros/rc/in", self.on_rc, qos)
+        # Some ArduPilot/receiver combinations populate all RC_CHANNELS PWM
+        # fields but incorrectly report chancount=0. MAVROS then publishes an
+        # empty RCIn.channels array. Read the same MAVLink message as a safe
+        # fallback; this path is input-only and never sends an RC override.
+        self.create_subscription(
+            Mavlink, "/uas1/mavlink_source", self.on_mavlink, qos
+        )
         self.get_logger().info(
             f"RC CH{self.channel}を待機: LOW<={self.low}, HIGH>={self.high}, "
             f"hold={self.hold_seconds:.1f}s, low_first={self.require_low}"
@@ -45,7 +53,26 @@ class RCStartGate(Node):
                 self.last_log = now
             return
 
-        value = int(msg.channels[self.index])
+        self.process_value(int(msg.channels[self.index]))
+
+    def on_mavlink(self, msg):
+        # MAVLink RC_CHANNELS (message ID 65): uint32 time_boot_ms,
+        # 18 x uint16 PWM, uint8 chancount, uint8 rssi. payload64 words are
+        # little-endian and may include padding after the 42-byte payload.
+        if msg.msgid != 65 or not msg.payload64:
+            return
+        payload = b"".join(
+            int(word).to_bytes(8, byteorder="little", signed=False)
+            for word in msg.payload64
+        )
+        if len(payload) < 42 or not 0 <= self.index < 18:
+            return
+        values = struct.unpack_from("<I18HBB", payload)
+        value = int(values[1 + self.index])
+        if value not in (0, 65535):
+            self.process_value(value)
+
+    def process_value(self, value):
         if value <= self.low:
             if not self.low_seen:
                 self.get_logger().info(

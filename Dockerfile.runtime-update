@@ -1,0 +1,14 @@
+# Offline/runtime-only update path.  Use this only when the complete image has
+# already been built and the registry is temporarily unavailable.
+FROM aruco-landing-pi4:humble
+
+ENV WS=/opt/aruco_ws
+
+COPY docker/overlays/landing_node.py \
+  ${WS}/src/aruco_landing/aruco_landing/landing_node.py
+COPY docker/overlays/landing_node.py \
+  ${WS}/install/lib/python3.10/site-packages/aruco_landing/landing_node.py
+COPY docker/start-hardware.sh /usr/local/bin/start-hardware
+COPY docker/healthcheck.sh /usr/local/bin/aruco-healthcheck
+
+RUN chmod +x /usr/local/bin/start-hardware /usr/local/bin/aruco-healthcheck
